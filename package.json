@@ -1,0 +1,49 @@
+{
+  "name": "vue-captcha-switcher",
+  "version": "1.0.0",
+  "description": "A Vue.js component to switch between different CAPTCHA services.",
+  "author": "",
+  "private": false,
+  "license": "MIT",
+  "main": "dist/vue-captcha-switcher.cjs.js",
+  "module": "dist/vue-captcha-switcher.esm.js",
+  "types": "dist_types/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./dist/vue-captcha-switcher.esm.js",
+      "require": "./dist/vue-captcha-switcher.cjs.js"
+    },
+    "./*": "./dist/*"
+  },
+  "scripts": {
+    "build": "vite build"
+  },
+  "keywords": [
+    "vue",
+    "captcha",
+    "hcaptcha",
+    "recaptcha",
+    "turnstile",
+    "vue3"
+  ],
+
+  "dependencies": {
+    "vue": "^3.5.12"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@vitejs/plugin-vue": "^5.1.4",
+    "@vue/compiler-sfc": "^3.5.12",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.8"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/vue-captcha-switcher.git"
+  },
+  "homepage": "https://github.com/yourusername/vue-captcha-switcher#readme"
+}
