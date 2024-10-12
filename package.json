@@ -2,7 +2,7 @@
   "name": "vue-captcha-switcher",
   "version": "1.0.0",
   "description": "A Vue.js component to switch between different CAPTCHA services.",
-  "author": "",
+  "author": "saidur bhuiyan",
   "private": false,
   "license": "MIT",
   "main": "dist/vue-captcha-switcher.cjs.js",
@@ -43,7 +43,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/vue-captcha-switcher.git"
+    "url": "https://github.com/saidurbhuiyan/vue-captcha-switcher.git"
   },
-  "homepage": "https://github.com/yourusername/vue-captcha-switcher#readme"
+  "homepage": "https://github.com/saidurbhuiyan/vue-captcha-switcher.git#readme"
 }
