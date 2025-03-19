@@ -49,18 +49,20 @@ defineExpose({
 
 // Function to render reCAPTCHA
 function renderRecaptcha() {
-  window.onloadRecaptchaCallback = () => {
-    if (window.grecaptcha) {
-      window.grecaptcha.render(recaptchaDiv.value, {
-        sitekey: props.sitekey,
-        theme: props.theme,
-        size: props.size,
-        callback: (response: string) => emit('verify', response),
-        'expired-callback': () => emit('expire'),
-        'error-callback': () => emit('fail'),
-      });
-    }
-  };
+  if (window.grecaptcha) {
+    window.grecaptcha.render(recaptchaDiv.value, {
+      sitekey: props.sitekey,
+      theme: props.theme,
+      size: props.size,
+      callback: (response: string) => emit('verify', response),
+      'expired-callback': () => emit('expire'),
+      'error-callback': () => emit('fail'),
+    });
+  }
+}
+
+function registerRenderRecaptchaCallback() {
+  window.onloadRecaptchaCallback = renderRecaptcha;
 }
 
 // Lifecycle hook to run when the component is mounted
@@ -73,7 +75,7 @@ onMounted(() => {
     scriptTag.defer = true;
     document.head.appendChild(scriptTag);
 
-    scriptTag.onload = renderRecaptcha; // Call render function when the script is loaded
+    scriptTag.onload = registerRenderRecaptchaCallback;
   }
 
   renderRecaptcha(); // Render the captcha
