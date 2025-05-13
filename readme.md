@@ -79,6 +79,7 @@ For example:
 | `captchaScriptIds` | Object  | No       | (Optional) Object to customize the script tag IDs for each CAPTCHA service. Defaults: `{ recaptcha: 'recaptcha-script', hcaptcha: 'hcaptcha-script', turnstile: 'turnstile-script' }`. |
 | `captchaReset`     | Boolean | No       | (Optional) Boolean value to manually trigger a reset of the CAPTCHA. Defaults to `false`.                                                                                              |
 | `loadingTimeout`   | Number  | No       | (Optional) Timeout in milliseconds to wait before the CAPTCHA fails to load. Defaults to `0` (no timeout).                                                                             |
+| `theme`            | String  | No       | (Optional) Theme for the CAPTCHA (light or dark). Defaults to `light`.                                                                                                                 |
 ### Events
 | Event          | Description                                                                         |
 |----------------|-------------------------------------------------------------------------------------|
