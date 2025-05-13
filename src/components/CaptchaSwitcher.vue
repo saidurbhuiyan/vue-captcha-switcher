@@ -16,6 +16,7 @@ interface CaptchaSwitcherProps {
     turnstile?: string; // Optional script ID for Turnstile
   };
   captchaReset?: boolean; // Optional flag to reset the captcha
+  theme?: string; // Optional theme (light or dark)
 }
 
 // Use defineProps with the CaptchaSwitcherProps interface
@@ -66,7 +67,7 @@ onMounted(() => {
   <HCaptcha
       v-if="captchaName === 'hcaptcha'"
       :sitekey="publicKey"
-      theme="dark"
+      :theme="theme"
       :scriptId="captchaScriptIds?.hcaptcha"
       @verify="onVerify"
       ref="captcha"
@@ -74,7 +75,7 @@ onMounted(() => {
   <RecaptchaV2
       v-if="captchaName === 'recaptcha'"
       :sitekey="publicKey"
-      theme="dark"
+      :theme="theme"
       :scriptId="captchaScriptIds?.recaptcha"
       @verify="onVerify"
       ref="captcha"
@@ -82,7 +83,7 @@ onMounted(() => {
   <TurnstileCaptcha
       v-if="captchaName === 'turnstile'"
       :sitekey="publicKey"
-      theme="dark"
+      :theme="theme"
       :scriptId="captchaScriptIds?.turnstile"
       @verify="onVerify"
       ref="captcha"
