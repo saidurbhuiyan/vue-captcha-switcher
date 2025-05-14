@@ -17,6 +17,7 @@ interface CaptchaSwitcherProps {
   };
   captchaReset?: boolean; // Optional flag to reset the captcha
   theme?: string; // Optional theme (light or dark)
+  size?: string; // Optional size of the captcha (normal or compact)
 }
 
 // Use defineProps with the CaptchaSwitcherProps interface
@@ -68,6 +69,7 @@ onMounted(() => {
       v-if="captchaName === 'hcaptcha'"
       :sitekey="publicKey"
       :theme="theme"
+      :size="size"
       :scriptId="captchaScriptIds?.hcaptcha"
       @verify="onVerify"
       ref="captcha"
@@ -76,6 +78,7 @@ onMounted(() => {
       v-if="captchaName === 'recaptcha'"
       :sitekey="publicKey"
       :theme="theme"
+      :size="size"
       :scriptId="captchaScriptIds?.recaptcha"
       @verify="onVerify"
       ref="captcha"
@@ -84,6 +87,7 @@ onMounted(() => {
       v-if="captchaName === 'turnstile'"
       :sitekey="publicKey"
       :theme="theme"
+      :size="size"
       :scriptId="captchaScriptIds?.turnstile"
       @verify="onVerify"
       ref="captcha"
