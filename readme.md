@@ -80,6 +80,7 @@ For example:
 | `captchaReset`     | Boolean | No       | (Optional) Boolean value to manually trigger a reset of the CAPTCHA. Defaults to `false`.                                                                                              |
 | `loadingTimeout`   | Number  | No       | (Optional) Timeout in milliseconds to wait before the CAPTCHA fails to load. Defaults to `0` (no timeout).                                                                             |
 | `theme`            | String  | No       | (Optional) Theme for the CAPTCHA (light or dark). Defaults to `light`.                                                                                                                 |
+| `size`             | String  | No       | (Optional) Size of the CAPTCHA (normal or compact). Defaults to `normal`.                                                                                                              |
 ### Events
 | Event          | Description                                                                         |
 |----------------|-------------------------------------------------------------------------------------|
