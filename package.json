@@ -1,6 +1,6 @@
 {
   "name": "vue-captcha-switcher",
-  "version": "1.0.13",
+  "version": "1.0.26",
   "description": "A Vue.js component to switch between different CAPTCHA services.",
   "author": "saidur bhuiyan",
   "private": false,
