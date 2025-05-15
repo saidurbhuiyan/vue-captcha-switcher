@@ -1,95 +1,90 @@
 <script lang="ts" setup>
-// Import necessary functions from Vue
-import { onMounted, ref, watch } from "vue";
+import { onMounted, onBeforeUnmount, ref, watch, computed } from "vue";
 import TurnstileCaptcha from "./TurnstileCaptcha.vue";
 import RecaptchaV2 from "./RecaptchaV2.vue";
 import HCaptcha from "./HCaptcha.vue";
 
-// Define props for the CaptchaSwitcher component with TypeScript
+// Props
 interface CaptchaSwitcherProps {
-  modelValue: string; // Captcha response value
-  captchaName: string; // Name of the selected captcha service
-  publicKey: string; // Public key for the captcha service
+  modelValue: string;
+  captchaName: 'recaptcha' | 'hcaptcha' | 'turnstile';
+  publicKey: string;
   captchaScriptIds?: {
-    recaptcha?: string; // Optional script ID for reCAPTCHA
-    hcaptcha?: string; // Optional script ID for hCaptcha
-    turnstile?: string; // Optional script ID for Turnstile
+    recaptcha?: string;
+    hcaptcha?: string;
+    turnstile?: string;
   };
-  captchaReset?: boolean; // Optional flag to reset the captcha
-  theme?: string; // Optional theme (light or dark)
-  size?: string; // Optional size of the captcha (normal or compact)
+  captchaReset?: boolean;
+  theme?: string;
+  size?: string;
 }
-
-// Use defineProps with the CaptchaSwitcherProps interface
 const props = defineProps<CaptchaSwitcherProps>();
 
-// Define events emitted by the component
+// Emits
 const emit = defineEmits<{
-  (e: 'update:modelValue', response: string): void; // Event for updating the captcha response
-  (e: 'captchaReset'): void; // Event for captcha reset
+  (e: 'update:modelValue', response: string): void;
+  (e: 'captchaReset'): void;
 }>();
 
-// Reference to the currently rendered captcha component
-const captcha = ref<InstanceType<typeof HCaptcha | typeof RecaptchaV2 | typeof TurnstileCaptcha> | null>(null);
+const captchaRef = ref<any>(null);
 
-// Callback function when captcha verification is successful
+// Emit verify
 const onVerify = (response: string) => {
-  emit('update:modelValue', response); // Emit the response value
+  emit('update:modelValue', response);
 };
 
-// Watch for changes in captchaReset prop to trigger reset
-watch(() => props.captchaReset, (newValue) => {
-  if (newValue && captcha.value) {
-    captcha.value.reset(); // Reset the captcha
-    emit('captchaReset'); // Emit the reset event
+// Reset support
+watch(() => props.captchaReset, (val) => {
+  if (val && captchaRef.value?.reset) {
+    captchaRef.value.reset();
+    emit('captchaReset');
   }
 });
 
-// Function to remove scripts for inactive captcha services
-const removeCaptchaScript = (currentCaptchaName: string) => {
-  Object.keys(props.captchaScriptIds || {}).forEach((captchaKey) => {
-    if (captchaKey !== currentCaptchaName) {
-      const scriptId = props.captchaScriptIds![captchaKey as keyof typeof props.captchaScriptIds]; // Get the script ID
-      const scriptTag = document.getElementById(scriptId); // Find the script tag
-      if (scriptTag) {
-        scriptTag.remove(); // Remove the script tag
-      }
+// Cleanup old scripts
+const removeOtherCaptchaScripts = (keep: string) => {
+  const ids = props.captchaScriptIds || {};
+  for (const [key, id] of Object.entries(ids)) {
+    if (key !== keep && id) {
+      const el = document.getElementById(id);
+      if (el) el.remove();
     }
-  });
+  }
 };
 
-// Lifecycle hook to run when the component is mounted
+// Also run on change
+watch(() => props.captchaName, (newName) => {
+  removeOtherCaptchaScripts(newName);
+});
+
+// Run initially
 onMounted(() => {
-  removeCaptchaScript(props.captchaName); // Remove inactive captcha scripts
+  removeOtherCaptchaScripts(props.captchaName);
+});
+
+// Final cleanup on unmount
+onBeforeUnmount(() => {
+  removeOtherCaptchaScripts(''); // remove all
+});
+
+// Dynamic component mapping
+const currentComponent = computed(() => {
+  return {
+    recaptcha: RecaptchaV2,
+    hcaptcha: HCaptcha,
+    turnstile: TurnstileCaptcha
+  }[props.captchaName];
 });
 </script>
 
 <template>
-  <HCaptcha
-      v-if="captchaName === 'hcaptcha'"
-      :sitekey="publicKey"
-      :theme="theme"
-      :size="size"
-      :scriptId="captchaScriptIds?.hcaptcha"
-      @verify="onVerify"
-      ref="captcha"
-  />
-  <RecaptchaV2
-      v-if="captchaName === 'recaptcha'"
-      :sitekey="publicKey"
-      :theme="theme"
-      :size="size"
-      :scriptId="captchaScriptIds?.recaptcha"
-      @verify="onVerify"
-      ref="captcha"
-  />
-  <TurnstileCaptcha
-      v-if="captchaName === 'turnstile'"
-      :sitekey="publicKey"
-      :theme="theme"
-      :size="size"
-      :scriptId="captchaScriptIds?.turnstile"
-      @verify="onVerify"
-      ref="captcha"
+  <component
+    :is="currentComponent"
+    :sitekey="publicKey"
+    :theme="theme"
+    :size="size"
+    :script-id="captchaScriptIds?.[captchaName]"
+    @verify="onVerify"
+    ref="captchaRef"
   />
 </template>

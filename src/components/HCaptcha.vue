@@ -1,88 +1,123 @@
 <script lang="ts" setup>
-// Import necessary functions and types from Vue
-import { onMounted, ref, PropType } from 'vue';
+import { onMounted, onBeforeUnmount, ref, PropType } from 'vue';
 
-// Create a reference for the HCaptcha div
+// Reference to the hCaptcha container div
 const hcaptchaDiv = ref<HTMLDivElement | null>(null);
 
-// Define props for HCaptcha component using PropType
+// Widget ID returned by hcaptcha after render
+let widgetId: string | null = null;
+
+// Define component props
 const props = defineProps({
   sitekey: {
-    type: String as PropType<string>, // Site key for hCaptcha
-    required: true, // Site key is required
+    type: String as PropType<string>,
+    required: true,
   },
   size: {
-    type: String as PropType<string>, // Optional size of the captcha
-    default: "normal", // Default value for size
+    type: String as PropType<'normal' | 'compact'>,
+    default: 'normal',
   },
   theme: {
-    type: String as PropType<string>, // Optional theme (light or dark)
-    default: "light", // Default value for theme
+    type: String as PropType<'light' | 'dark'>,
+    default: 'light',
   },
   scriptId: {
-    type: String as PropType<string>, // Optional ID for the script tag
-    default: "hcaptcha-script", // Default ID for the script tag
-  },
-  loadingTimeout: {
-    type: Number as PropType<number>, // Optional loading timeout in milliseconds
-    default: 0, // Default loading timeout
+    type: String as PropType<string>,
+    default: 'hcaptcha-script',
   },
 });
 
-// Define events emitted by the component using TypeScript
+// Define emitted events
 const emit = defineEmits<{
-  (e: 'verify', response: string): void; // Event emitted when verification is successful
-  (e: 'error'): void; // Event emitted on captcha error
-  (e: 'expire'): void; // Event emitted when the captcha expires
-  (e: 'fail'): void; // Event emitted on captcha failure
+  (e: 'verify', response: string): void;
+  (e: 'error'): void;
+  (e: 'expire'): void;
+  (e: 'fail'): void;
 }>();
 
-// Expose methods to reset or execute the captcha for parent component access
+// Expose execute and reset methods for parent access
 defineExpose({
   execute() {
-    window.hcaptcha.execute(); // Trigger hCaptcha execution
+    if (window.hcaptcha && widgetId !== null) {
+      window.hcaptcha.execute(widgetId);
+    }
   },
   reset() {
-    window.hcaptcha.reset(); // Reset the hCaptcha
+    if (window.hcaptcha && widgetId !== null) {
+      window.hcaptcha.reset(widgetId);
+    }
   },
+  cleanup,
 });
 
-// Function to render hCaptcha when the script is loaded
+/**
+ * Renders the hCaptcha widget inside the container div
+ */
 function renderHcaptcha() {
-  // Callback function to run when hCaptcha is ready
-  window.onloadHcaptchaCallback = () => {
-    if (window.hcaptcha) {
-      window.hcaptcha.render(hcaptchaDiv.value, {
-        sitekey: props.sitekey,
-        theme: props.theme,
-        size: props.size,
-        callback: (response: string) => emit('verify', response), // Emit verify event with response
-        'expired-callback': () => emit('expire'), // Emit expire event
-        'error-callback': () => emit('fail'), // Emit fail event
-      });
-    }
-  };
+  if (window.hcaptcha && hcaptchaDiv.value) {
+    widgetId = window.hcaptcha.render(hcaptchaDiv.value, {
+      sitekey: props.sitekey,
+      theme: props.theme,
+      size: props.size,
+      callback: (response: string) => emit('verify', response),
+      'expired-callback': () => emit('expire'),
+      'error-callback': () => emit('fail'),
+    });
+  }
 }
 
-// Lifecycle hook to run when the component is mounted
+/**
+ * Registers global callback invoked by hCaptcha script on load
+ */
+function registerRenderHcaptchaCallback() {
+  window.onloadHcaptchaCallback = renderHcaptcha;
+}
+
+// Lifecycle hook - runs when component is mounted
 onMounted(() => {
-  // Check if the script is already loaded to avoid duplicates
+  // Add hCaptcha script if not already loaded
   if (!document.getElementById(props.scriptId)) {
     const scriptTag = document.createElement('script');
-    scriptTag.id = props.scriptId; // Set the script ID
-    scriptTag.src = `https://js.hcaptcha.com/1/api.js?onload=onloadHcaptchaCallback&render=explicit`;
-    scriptTag.async = true; // Load script asynchronously
-    scriptTag.defer = true; // Defer execution until the page has loaded
-    document.head.appendChild(scriptTag); // Append script tag to the document head
+    scriptTag.id = props.scriptId;
+    scriptTag.src = 'https://js.hcaptcha.com/1/api.js?onload=onloadHcaptchaCallback&render=explicit';
+    scriptTag.async = true;
+    scriptTag.defer = true;
+    scriptTag.onerror = () => emit('error');
+    document.head.appendChild(scriptTag);
 
-    scriptTag.onload = renderHcaptcha; // Call render function when the script is loaded
+    scriptTag.onload = registerRenderHcaptchaCallback;
+    
   } else {
-    // If the script is already loaded, render the captcha directly
-    renderHcaptcha(); // Render the captcha
+    // Script loaded, render immediately
+    renderHcaptcha();
   }
+  
+});
+
+/**
+ * Cleanup function to remove script and clear container div
+ */
+function cleanup() {
+  // Remove hCaptcha script tag from document
+  const script = document.getElementById(props.scriptId);
+  script?.remove();
+
+  // Clear container div content
+  if (hcaptchaDiv.value) {
+    hcaptchaDiv.value.innerHTML = '';
+  }
+
+  // Cleanup global variables
+  delete window.onloadHcaptchaCallback;
+  delete window.hcaptcha;
+}
+
+// Cleanup on component unmount
+onBeforeUnmount(() => {
+  cleanup();
 });
 </script>
 
 <template>
-  <div ref="hcaptchaDiv"></div> <!-- Div where hCaptcha will be rendered -->
+  <div ref="hcaptchaDiv"></div>
 </template>

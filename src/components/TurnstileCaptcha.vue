@@ -1,112 +1,119 @@
 <script lang="ts" setup>
-// Import necessary functions from Vue
-import {onMounted, PropType, ref} from 'vue';
+import { onMounted, onBeforeUnmount, ref, PropType } from 'vue';
 
-// Create a reference for the Turnstile div
+// Reference to the Turnstile container div
 const turnstileDiv = ref<HTMLDivElement | null>(null);
-let turnstile: any = null; // Declare a variable for Turnstile instance
 
-// Define props for  Turnstile component using PropType
+// Widget ID returned by Turnstile after render
+let widgetId: string | null = null;
+
+// Props definition
 const props = defineProps({
   sitekey: {
-    type: String as PropType<string>, // Site key for  Turnstile
-    required: true, // Site key is required
+    type: String as PropType<string>,
+    required: true,
   },
   size: {
-    type: String as PropType<string>, // Optional size of the captcha
-    default: "normal", // Default value for size
+    type: String as PropType<'normal' | 'compact'>,
+    default: 'normal',
   },
   theme: {
-    type: String as PropType<string>, // Optional theme (light or dark)
-    default: "light", // Default value for theme
+    type: String as PropType<'light' | 'dark'>,
+    default: 'light',
   },
   scriptId: {
-    type: String as PropType<string>, // Optional ID for the script tag
-    default: " turnstile-script", // Default ID for the script tag
-  },
-  loadingTimeout: {
-    type: Number as PropType<number>, // Optional loading timeout in milliseconds
-    default: 0, // Default loading timeout
+    type: String as PropType<string>,
+    default: 'turnstile-script',
   },
 });
 
-// Define events emitted by the component
+// Define emitted events
 const emit = defineEmits<{
-  (e: 'verify', response: string): void; // Event for captcha verification
-  (e: 'error', error: Error): void; // Event for captcha error
-  (e: 'expire'): void; // Event for captcha expiration
-  (e: 'fail'): void; // Event for captcha failure
+  (e: 'verify', response: string): void;
+  (e: 'error', error: Error): void;
+  (e: 'expire'): void;
+  (e: 'fail'): void;
 }>();
 
-// Expose methods to reset or execute the captcha
+// Expose execute and reset methods to parent components
 defineExpose({
   execute() {
-    window.turnstile.execute(turnstile);
+    if (window.turnstile && widgetId !== null) {
+      window.turnstile.execute(widgetId);
+    }
   },
   reset() {
-    window.turnstile.reset(turnstile);
+    if (window.turnstile && widgetId !== null) {
+      window.turnstile.reset(widgetId);
+    }
   },
+  cleanup,
 });
 
-// Function to render Turnstile
+/**
+ * Renders the Turnstile captcha widget inside the container div
+ */
 function renderTurnstile() {
-  window.onloadTurnstileCallback = () => {
-    if (window.turnstile) {
-      turnstile = window.turnstile.render(turnstileDiv.value, {
-        sitekey: props.sitekey,
-        theme: props.theme,
-        size: props.size,
-        callback: (response: string) => emit('verify', response),
-        'expired-callback': () => emit('expire'),
-        'error-callback': () => emit('fail'),
-      });
-    }
-  };
+  if (window.turnstile && turnstileDiv.value) {
+    widgetId = window.turnstile.render(turnstileDiv.value, {
+      sitekey: props.sitekey,
+      theme: props.theme,
+      size: props.size,
+      callback: (response: string) => emit('verify', response),
+      'expired-callback': () => emit('expire'),
+      'error-callback': () => emit('fail'),
+    });
+  }
 }
 
-// Lifecycle hook to run when the component is mounted
+/**
+ * Registers the global callback function that Turnstile calls once the script loads
+ */
+function registerRenderTurnstileCallback() {
+  window.onloadTurnstileCallback = renderTurnstile;
+}
+
+// Lifecycle: on component mount
 onMounted(() => {
+  // Check if Turnstile script is already loaded
   if (!document.getElementById(props.scriptId)) {
-    new Promise<void>((resolve, reject) => {
-      let loadingCountdown: NodeJS.Timeout; // Declare loading countdown variable
-      let responded = false;
+    const scriptTag = document.createElement('script');
+    scriptTag.id = props.scriptId;
+    scriptTag.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit';
+    scriptTag.async = true;
+    scriptTag.defer = true;
+    scriptTag.onerror = () => emit('error', new Error('Turnstile script failed to load.'));
+    document.head.appendChild(scriptTag);
 
-      window.turnstileReady = () => {
-        if (responded) return;
-        responded = true;
-        clearTimeout(loadingCountdown);
-        resolve(); // Resolve promise on success
-      };
+    scriptTag.onload = registerRenderTurnstileCallback;
 
-      const loadingFailed = (reason: string) => () => {
-        if (responded) return;
-        responded = true;
-        clearTimeout(loadingCountdown);
-        const scriptTag = document.getElementById(props.scriptId);
-        if (scriptTag) scriptTag.remove(); // Remove the script tag
-        reject(reason); // Reject promise on failure
-      };
-
-      // Set loading timeout if specified
-      if (props.loadingTimeout > 0) {
-        loadingCountdown = setTimeout(loadingFailed('timeout'), props.loadingTimeout);
-      }
-
-      const doc = window.document;
-      const scriptTag = doc.createElement('script');
-      scriptTag.id = props.scriptId;
-      scriptTag.onerror = loadingFailed('error');
-      scriptTag.onabort = loadingFailed('aborted');
-      scriptTag.async = true;
-      scriptTag.defer = true;
-      scriptTag.src = `https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback`;
-      doc.head.appendChild(scriptTag); // Append the script tag to the document head
-    })
-        .then(() => renderTurnstile()) // Render captcha on success
-        .catch((error) => emit('error', error)); // Emit error on failure
+  }else {
+    renderTurnstile();
   }
 
-  renderTurnstile(); // Render the captcha
+});
+
+/**
+ * Cleanup function to remove script and clear the captcha container
+ */
+function cleanup() {
+  // Remove the Turnstile script tag
+  const script = document.getElementById(props.scriptId);
+  script?.remove();
+
+  // Clear the captcha container div
+  if (turnstileDiv.value) {
+    turnstileDiv.value.innerHTML = '';
+  }
+
+  // Remove global callbacks to avoid memory leaks
+  delete window.onloadTurnstileCallback;
+  delete window.turnstile;
+}
+
+// Lifecycle: on component unmount
+onBeforeUnmount(() => {
+  cleanup();
 });
 </script>
 

@@ -1,56 +1,61 @@
 <script lang="ts" setup>
-// Import necessary functions from Vue
-import {onMounted, PropType, ref} from 'vue';
+import { onMounted, onBeforeUnmount, ref, PropType } from 'vue';
 
-// Create a reference for the reCAPTCHA div
+// Reference to the reCAPTCHA container div
 const recaptchaDiv = ref<HTMLDivElement | null>(null);
 
-// Define props for  reCaptcha component using PropType
+// Widget ID returned by grecaptcha after render
+let widgetId: number | null = null;
+
+// Define component props
 const props = defineProps({
   sitekey: {
-    type: String as PropType<string>, // Site key for  reCaptcha
-    required: true, // Site key is required
+    type: String as PropType<string>,
+    required: true,
   },
   size: {
-    type: String as PropType<string>, // Optional size of the captcha
-    default: "normal", // Default value for size
+    type: String as PropType<'normal' | 'compact'>,
+    default: 'normal',
   },
   theme: {
-    type: String as PropType<string>, // Optional theme (light or dark)
-    default: "light", // Default value for theme
+    type: String as PropType<'light' | 'dark'>,
+    default: 'light',
   },
   scriptId: {
-    type: String as PropType<string>, // Optional ID for the script tag
-    default: " recaptcha-script", // Default ID for the script tag
-  },
-  loadingTimeout: {
-    type: Number as PropType<number>, // Optional loading timeout in milliseconds
-    default: 0, // Default loading timeout
+    type: String as PropType<string>,
+    default: 'recaptcha-script',
   },
 });
 
-// Define events emitted by the component
+// Define emitted events
 const emit = defineEmits<{
-  (e: 'verify', response: string): void; // Event for captcha verification
-  (e: 'error'): void; // Event for captcha error
-  (e: 'expire'): void; // Event for captcha expiration
-  (e: 'fail'): void; // Event for captcha failure
+  (e: 'verify', response: string): void;
+  (e: 'error'): void;
+  (e: 'expire'): void;
+  (e: 'fail'): void;
 }>();
 
-// Expose methods to reset or execute the captcha
+// Expose execute and reset methods for external use
 defineExpose({
   execute() {
-    window.grecaptcha.execute();
+    if (window.grecaptcha && widgetId !== null) {
+      window.grecaptcha.execute(widgetId);
+    }
   },
   reset() {
-    window.grecaptcha.reset();
+    if (window.grecaptcha && widgetId !== null) {
+      window.grecaptcha.reset(widgetId);
+    }
   },
+  cleanup,
 });
 
-// Function to render reCAPTCHA
+/**
+ * Renders the Google reCAPTCHA widget inside the container div
+ */
 function renderRecaptcha() {
-  if (window.grecaptcha) {
-    window.grecaptcha.render(recaptchaDiv.value, {
+  if (window.grecaptcha && recaptchaDiv.value) {
+    widgetId = window.grecaptcha.render(recaptchaDiv.value, {
       sitekey: props.sitekey,
       theme: props.theme,
       size: props.size,
@@ -61,24 +66,53 @@ function renderRecaptcha() {
   }
 }
 
+/**
+ * Registers global callback function invoked by Google reCAPTCHA script on load
+ */
 function registerRenderRecaptchaCallback() {
   window.onloadRecaptchaCallback = renderRecaptcha;
 }
 
-// Lifecycle hook to run when the component is mounted
+// Lifecycle hook - runs after component is mounted
 onMounted(() => {
+  // Avoid adding script if it already exists
   if (!document.getElementById(props.scriptId)) {
     const scriptTag = document.createElement('script');
     scriptTag.id = props.scriptId;
-    scriptTag.src = `https://www.google.com/recaptcha/api.js?onload=onloadRecaptchaCallback&render=explicit`;
+    scriptTag.src = 'https://www.google.com/recaptcha/api.js?onload=onloadRecaptchaCallback&render=explicit';
     scriptTag.async = true;
     scriptTag.defer = true;
+    scriptTag.onerror = () => emit('error');
     document.head.appendChild(scriptTag);
 
     scriptTag.onload = registerRenderRecaptchaCallback;
+    
+  } else{
+    renderRecaptcha();
+  } 
+});
+
+/**
+ * Cleanup function to remove script and clear captcha container
+ */
+function cleanup() {
+  // Remove the reCAPTCHA script tag from document
+  const script = document.getElementById(props.scriptId);
+  script?.remove();
+
+  // Clear the captcha container div
+  if (recaptchaDiv.value) {
+    recaptchaDiv.value.innerHTML = '';
   }
 
-  renderRecaptcha(); // Render the captcha
+  // Clean up global callbacks
+  delete window.onloadRecaptchaCallback;
+  delete window.grecaptcha;
+}
+
+// Cleanup on component unmount
+onBeforeUnmount(() => {
+  cleanup();
 });
 </script>
 
