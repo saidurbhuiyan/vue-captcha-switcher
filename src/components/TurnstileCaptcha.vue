@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, onBeforeUnmount, ref, PropType } from 'vue';
+import { loadCaptchaScript } from '../loadCaptchaScript';
 
 // Reference to the Turnstile container div
 const turnstileDiv = ref<HTMLDivElement | null>(null);
@@ -14,11 +15,11 @@ const props = defineProps({
     required: true,
   },
   size: {
-    type: String as PropType<'normal' | 'compact'>,
+    type: String as PropType<'normal' | 'compact' | 'flexible'>,
     default: 'normal',
   },
   theme: {
-    type: String as PropType<'light' | 'dark'>,
+    type: String as PropType<'light' | 'dark' | 'auto'>,
     default: 'light',
   },
   scriptId: {
@@ -66,49 +67,31 @@ function renderTurnstile() {
   }
 }
 
-/**
- * Registers the global callback function that Turnstile calls once the script loads
- */
-function registerRenderTurnstileCallback() {
-  window.onloadTurnstileCallback = renderTurnstile;
-}
-
 // Lifecycle: on component mount
 onMounted(() => {
-  // Check if Turnstile script is already loaded
-  if (!document.getElementById(props.scriptId)) {
-    const scriptTag = document.createElement('script');
-    scriptTag.id = props.scriptId;
-    scriptTag.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit';
-    scriptTag.async = true;
-    scriptTag.defer = true;
-    scriptTag.onerror = () => emit('error', new Error('Turnstile script failed to load.'));
-    document.head.appendChild(scriptTag);
-
-    scriptTag.onload = registerRenderTurnstileCallback;
-
-  }else {
-    renderTurnstile();
-  }
-
+  loadCaptchaScript(
+    props.scriptId,
+    'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onloadTurnstileCallback&render=explicit',
+    'onloadTurnstileCallback',
+    () => typeof window.turnstile?.render === 'function',
+  )
+    .then(renderTurnstile)
+    .catch((error: Error) => emit('error', error));
 });
 
 /**
- * Cleanup function to remove script and clear the captcha container
+ * Cleanup function to remove this widget (the shared script stays loaded)
  */
 function cleanup() {
-  // Remove the Turnstile script tag
-  const script = document.getElementById(props.scriptId);
-  script?.remove();
+  if (window.turnstile && widgetId !== null) {
+    window.turnstile.remove(widgetId);
+    widgetId = null;
+  }
 
   // Clear the captcha container div
   if (turnstileDiv.value) {
     turnstileDiv.value.innerHTML = '';
   }
-
-  // Remove global callbacks to avoid memory leaks
-  delete window.onloadTurnstileCallback;
-  delete window.turnstile;
 }
 
 // Lifecycle: on component unmount

@@ -82,13 +82,13 @@ For example:
 
 | Prop               | Type    | Required | Description                                                                                                                                                                            |
 | ------------------ | ------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `v-model`          | String  | Yes      | The CAPTCHA response token. Cleared automatically when the token expires, fails, is reset, or the widget changes.                                                                     |
 | `captchaName`      | String  | Yes      | Name of the CAPTCHA service to use (`'recaptcha'`, `'hcaptcha'`, `'turnstile'`).                                                                                                       |
 | `publicKey`        | String  | Yes      | Public site key for the respective CAPTCHA service.                                                                                                                                    |
 | `captchaScriptIds` | Object  | No       | (Optional) Object to customize the script tag IDs for each CAPTCHA service. Defaults: `{ recaptcha: 'recaptcha-script', hcaptcha: 'hcaptcha-script', turnstile: 'turnstile-script' }`. |
 | `captchaReset`     | Boolean | No       | (Optional) Boolean value to manually trigger a reset of the CAPTCHA. Defaults to `false`.                                                                                              |
-| `loadingTimeout`   | Number  | No       | (Optional) Timeout in milliseconds to wait before the CAPTCHA fails to load. Defaults to `0` (no timeout).                                                                             |
-| `theme`            | String  | No       | (Optional) Theme for the CAPTCHA (`light` or `dark`). Defaults to `light`.                                                                                                             |
-| `size`             | String  | No       | (Optional) Size of the CAPTCHA (`normal` or `compact`). Defaults to `normal`.                                                                                                          |
+| `theme`            | String  | No       | (Optional) Theme for the CAPTCHA (`light` or `dark`; Turnstile also `auto`). Defaults to `light`.                                                                                                        |
+| `size`             | String  | No       | (Optional) Size of the CAPTCHA (`normal`, `compact`; reCAPTCHA/hCaptcha also `invisible`, Turnstile also `flexible`). Defaults to `normal`.                                                                                                      |
 
 ### Events
 
@@ -96,8 +96,18 @@ For example:
 | -------------- | ----------------------------------------------------------------------------------- |
 | `verify`       | Emitted when CAPTCHA verification is successful. Passes the CAPTCHA response token. |
 | `expire`       | Emitted when the CAPTCHA expires and requires re-verification.                      |
-| `fail`         | Emitted when CAPTCHA fails to load or there's an error during verification.         |
+| `fail`         | Emitted when there's an error during verification.                                  |
+| `error`        | Emitted when the CAPTCHA script fails to load. Passes an `Error`.                   |
 | `captchaReset` | Emitted when the CAPTCHA is reset using the `captchaReset` prop.                    |
+
+### Methods
+
+Access these through a template ref (`<VueCaptchaSwitcher ref="captcha" ... />`):
+
+| Method      | Description                                           |
+| ----------- | ----------------------------------------------------- |
+| `reset()`   | Resets the CAPTCHA and clears the `v-model` token.    |
+| `execute()` | Triggers the CAPTCHA challenge (invisible mode).      |
 
 ## Contributing
 

@@ -6,5 +6,4 @@ interface Window {
     onloadRecaptchaCallback?: () => void;
     onloadHcaptchaCallback?: () => void;
     onloadTurnstileCallback?: () => void;
-    turnstileReady?: () => void;
 }

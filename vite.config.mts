@@ -9,7 +9,7 @@ export default defineConfig({
         lib: {
             entry: path.resolve(__dirname, 'src/index.ts'), // Entry file for the library
             name: 'VueCaptchaSwitcher', // Name of the library
-            fileName: (format) => `vue-captcha-switcher.${format}.js`, // Output filename format
+            fileName: (format) => format === 'cjs' ? 'vue-captcha-switcher.cjs' : `vue-captcha-switcher.${format}.js`, // .cjs so Node loads it as CommonJS
             formats: ['esm', 'umd', 'cjs'], // Supported formats
         },
         rollupOptions: {

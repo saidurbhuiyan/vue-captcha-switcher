@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, onBeforeUnmount, ref, watch, computed } from "vue";
+import { ref, watch, computed } from "vue";
 import TurnstileCaptcha from "./TurnstileCaptcha.vue";
 import RecaptchaV2 from "./RecaptchaV2.vue";
 import HCaptcha from "./HCaptcha.vue";
@@ -23,6 +23,10 @@ const props = defineProps<CaptchaSwitcherProps>();
 // Emits
 const emit = defineEmits<{
   (e: 'update:modelValue', response: string): void;
+  (e: 'verify', response: string): void;
+  (e: 'expire'): void;
+  (e: 'fail'): void;
+  (e: 'error', error: Error): void;
   (e: 'captchaReset'): void;
 }>();
 
@@ -31,40 +35,40 @@ const captchaRef = ref<any>(null);
 // Emit verify
 const onVerify = (response: string) => {
   emit('update:modelValue', response);
+  emit('verify', response);
+};
+
+// Clear the stale token when it expires or fails
+const onExpire = () => {
+  emit('update:modelValue', '');
+  emit('expire');
+};
+const onFail = () => {
+  emit('update:modelValue', '');
+  emit('fail');
 };
 
 // Reset support
+const reset = () => {
+  captchaRef.value?.reset();
+  emit('update:modelValue', '');
+};
+const execute = () => captchaRef.value?.execute();
+defineExpose({ reset, execute });
+
 watch(() => props.captchaReset, (val) => {
-  if (val && captchaRef.value?.reset) {
-    captchaRef.value.reset();
+  if (val) {
+    reset();
     emit('captchaReset');
   }
 });
 
-// Cleanup old scripts
-const removeOtherCaptchaScripts = (keep: string) => {
-  const ids = props.captchaScriptIds || {};
-  for (const [key, id] of Object.entries(ids)) {
-    if (key !== keep && id) {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    }
-  }
-};
+// Re-render the widget when any render option changes
+const widgetKey = computed(() => `${props.captchaName}-${props.publicKey}-${props.theme}-${props.size}`);
 
-// Also run on change
-watch(() => props.captchaName, (newName) => {
-  removeOtherCaptchaScripts(newName);
-});
-
-// Run initially
-onMounted(() => {
-  removeOtherCaptchaScripts(props.captchaName);
-});
-
-// Final cleanup on unmount
-onBeforeUnmount(() => {
-  removeOtherCaptchaScripts(''); // remove all
+// A token from the previous widget is no longer valid
+watch(widgetKey, () => {
+  if (props.modelValue) emit('update:modelValue', '');
 });
 
 // Dynamic component mapping
@@ -80,11 +84,15 @@ const currentComponent = computed(() => {
 <template>
   <component
     :is="currentComponent"
+    :key="widgetKey"
     :sitekey="publicKey"
     :theme="theme"
     :size="size"
     :script-id="captchaScriptIds?.[captchaName]"
     @verify="onVerify"
+    @expire="onExpire"
+    @fail="onFail"
+    @error="emit('error', $event)"
     ref="captchaRef"
   />
 </template>

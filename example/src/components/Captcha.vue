@@ -13,10 +13,10 @@
       <p>Captcha Theme: </p>
       <ul class="flex flex-wrap text-sm font-medium text-center text-gray-500 dark:text-gray-400">
     <li class="me-2">
-        <a href="#" @click="theme = 'dark'" :class="(theme === 'dark' ? ' bg-gray-800 text-white' : ' bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-300') + ' inline-block px-4 py-3 rounded-lg'">Dark</a>
+        <a href="#" @click.prevent="theme = 'dark'" :class="(theme === 'dark' ? ' bg-gray-800 text-white' : ' bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-300') + ' inline-block px-4 py-3 rounded-lg'">Dark</a>
     </li>
     <li class="me-2">
-        <a href="#" @click="theme = 'light'" :class="(theme === 'light' ? ' bg-gray-800 text-white' : ' bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-300') + ' inline-block px-4 py-3 rounded-lg'" >Light</a>
+        <a href="#" @click.prevent="theme = 'light'" :class="(theme === 'light' ? ' bg-gray-800 text-white' : ' bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-300') + ' inline-block px-4 py-3 rounded-lg'" >Light</a>
     </li>
     
 </ul>
@@ -26,12 +26,11 @@
     <div class="flex justify-center mb-4">
       <VueCaptchaSwitcher
           v-if="captchaName"
-          :key="captchaName + '-' + theme"
           :captchaName="captchaName"
           :publicKey="getSiteKey(captchaName)"
           :theme="theme"
           v-model="captchaResponse"
-          modelValue="onVerify"
+          @verify="onVerify"
           :captchaReset="captchaReset"
           @captchaReset="captchaReset = false"
         />

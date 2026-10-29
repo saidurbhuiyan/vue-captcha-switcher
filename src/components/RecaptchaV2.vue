@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { onMounted, onBeforeUnmount, ref, PropType } from 'vue';
+import { loadCaptchaScript } from '../loadCaptchaScript';
 
 // Reference to the reCAPTCHA container div
 const recaptchaDiv = ref<HTMLDivElement | null>(null);
@@ -14,7 +15,7 @@ const props = defineProps({
     required: true,
   },
   size: {
-    type: String as PropType<'normal' | 'compact'>,
+    type: String as PropType<'normal' | 'compact' | 'invisible'>,
     default: 'normal',
   },
   theme: {
@@ -30,7 +31,7 @@ const props = defineProps({
 // Define emitted events
 const emit = defineEmits<{
   (e: 'verify', response: string): void;
-  (e: 'error'): void;
+  (e: 'error', error: Error): void;
   (e: 'expire'): void;
   (e: 'fail'): void;
 }>();
@@ -66,48 +67,37 @@ function renderRecaptcha() {
   }
 }
 
-/**
- * Registers global callback function invoked by Google reCAPTCHA script on load
- */
-function registerRenderRecaptchaCallback() {
-  window.onloadRecaptchaCallback = renderRecaptcha;
-}
-
 // Lifecycle hook - runs after component is mounted
 onMounted(() => {
-  // Avoid adding script if it already exists
-  if (!document.getElementById(props.scriptId)) {
-    const scriptTag = document.createElement('script');
-    scriptTag.id = props.scriptId;
-    scriptTag.src = 'https://www.google.com/recaptcha/api.js?onload=onloadRecaptchaCallback&render=explicit';
-    scriptTag.async = true;
-    scriptTag.defer = true;
-    scriptTag.onerror = () => emit('error');
-    document.head.appendChild(scriptTag);
-
-    scriptTag.onload = registerRenderRecaptchaCallback;
-    
-  } else{
-    renderRecaptcha();
-  } 
+  loadCaptchaScript(
+    props.scriptId,
+    'https://www.google.com/recaptcha/api.js?onload=onloadRecaptchaCallback&render=explicit',
+    'onloadRecaptchaCallback',
+    () => typeof window.grecaptcha?.render === 'function',
+  )
+    .then(renderRecaptcha)
+    .catch((error: Error) => emit('error', error));
 });
 
 /**
- * Cleanup function to remove script and clear captcha container
+ * Cleanup function to clear this widget (the shared script stays loaded).
+ * reCAPTCHA v2 has no remove API, so we clear the container ourselves.
  */
 function cleanup() {
-  // Remove the reCAPTCHA script tag from document
-  const script = document.getElementById(props.scriptId);
-  script?.remove();
+  widgetId = null;
+
+  // Remove this widget's challenge iframe ("c-<id>"), which reCAPTCHA appends to <body>
+  const anchorName = recaptchaDiv.value?.querySelector<HTMLIFrameElement>('iframe[name^="a-"]')?.name;
+  if (anchorName) {
+    let challenge = document.querySelector(`iframe[name="c-${anchorName.slice(2)}"]`);
+    while (challenge && challenge.parentElement !== document.body) challenge = challenge.parentElement;
+    challenge?.remove();
+  }
 
   // Clear the captcha container div
   if (recaptchaDiv.value) {
     recaptchaDiv.value.innerHTML = '';
   }
-
-  // Clean up global callbacks
-  delete window.onloadRecaptchaCallback;
-  delete window.grecaptcha;
 }
 
 // Cleanup on component unmount
